@@ -11,17 +11,17 @@
 
 pros::Controller controller1(CONTROLLER_MASTER);
 
-pros::Motor leftFrontDrive(LEFT_FRONT_PORT);
-pros::Motor leftBackDrive(LEFT_BACK_PORT);
-pros::Motor rightFrontDrive(RIGHT_FRONT_PORT, true);
-pros::Motor rightBackDrive(RIGHT_BACK_PORT, true);
+pros::Motor leftFrontDrive(LEFT_FRONT_PORT, true);
+pros::Motor leftBackDrive(LEFT_BACK_PORT, true);
+pros::Motor rightFrontDrive(RIGHT_FRONT_PORT, false);
+pros::Motor rightBackDrive(RIGHT_BACK_PORT, false);
 pros::Motor_Group leftDrive({leftFrontDrive, leftBackDrive});
 pros::Motor_Group rightDrive({rightFrontDrive, rightBackDrive});
 
 pros::Motor intake(INTAKE_PORT);
 
-pros::Motor cata1(CATA_PORT_ONE);
-pros::Motor cata2(CATA_PORT_TWO, true);
+pros::Motor cata1(CATA_PORT_ONE, true);
+pros::Motor cata2(CATA_PORT_TWO, false);
 pros::Motor_Group cata({cata1, cata2});
 
 pros::ADIDigitalOut pistonL(LEFT_PISTON_PORT);
@@ -39,25 +39,25 @@ int velCap; //velCap limits the change in velocity and must be global
 int targetLeft;
 int targetRight;
 
-void drivePIDFn(void*){
+void drivePIDFn(){
   leftDrive.tare_position(); //reset base encoders
   rightDrive.tare_position();
   int errorLeft;
   int errorRight;
   float kp = 0.075;
   float kpTurn = 0.2;
-  int acc = 5;
+  int acc = 5000;
   int voltageLeft = 0;
   int voltageRight = 0;
   int signLeft;
   int signRight;
-  pros::delay(20);
-  while(isAuton){
+  // pros::delay(5);
+  while(true){
     errorLeft = targetLeft - leftFrontDrive.get_position(); //error is target minus actual value
     errorRight = targetRight - rightFrontDrive.get_position();
 
-    signLeft = errorLeft / abs(errorLeft); // + or - 1
-    signRight = errorRight / abs(errorRight);
+    signLeft = (errorLeft > 0) - (errorLeft < 0);
+    signRight = (errorRight > 0) - (errorRight < 0);
 
     if(signLeft == signRight){
       voltageLeft = errorLeft * kp; //intended voltage is error times constant
@@ -86,7 +86,7 @@ void drivePIDFn(void*){
     rightBackDrive.move(voltageRight);
     rightFrontDrive.move(voltageRight);
 
-    pros::delay(20);
+    // pros::delay(25);
   }
 }
 
@@ -190,10 +190,10 @@ void initialize() {
 	pros::lcd::set_text(1, "Hello PROS User!");
 
 	pros::lcd::register_btn1_cb(on_center_button);
-
 	pros::Task cataTask(cataControl);
 	pros::Task wingTask(wingControl);
 	pros::Task intakeTask(intakeControl);
+    autonomous();
 }
 
 /**
@@ -233,6 +233,10 @@ void autonomous() {
 	// ie. drive(100, 100) = 100 ticks forward
 	// drive(100, -100) = right turn for 100 ticks
 
+    drive(100000, 100000);
+    pros::Task autonTask(drivePIDFn);
+
+
 
 }
 
@@ -252,7 +256,7 @@ void autonomous() {
 
 void opcontrol() {
 
-	isAuton = false;
+	// isAuton = false;
 
 	while(true){
 		int power = controller1.get_analog(ANALOG_LEFT_Y);
